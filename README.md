@@ -1,6 +1,6 @@
 
 # Buffering is a roblox-ts package to make buffers a lot easier to manage without making repetitive code! 😈
-
+## A light-weight, Straight to point and basic buffer library alternative to other packages
 
 ## Create a scheme
 
