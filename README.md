@@ -8,6 +8,7 @@
 const scheme = {
 	amount: Buffering.number(NumberType.u8),
 	name: Buffering.string(10),
+	special: Buffering.specialString(),
 	has: Buffering.bool(),
 };
 ```
@@ -22,6 +23,7 @@ const data = {
 	amount: 21,
 	name: "hello world",
 	has: true,
+	special: "Auto detects the size! no errors"
 };
 const serialized = buff.write(data);
 ```
