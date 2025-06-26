@@ -9,7 +9,7 @@ export enum NumberType {
 	f64 = "f64",
 }
 
-type PrimitiveType = NumberType | "string" | "bool";
+type PrimitiveType = NumberType | "string" | "bool" | "specialString";
 
 const BYTE_SIZING = {
 	[NumberType.u8]: 1,
@@ -60,21 +60,8 @@ export class Buffering<S extends Scheme> {
 	private defaultSize = 0;
 	private scheme: Scheme;
 	constructor(scheme: Scheme) {
-		for (const [key, value] of pairs(scheme)) {
-			value.offset = this.size;
-			this.size += value.size;
-
-			if (DIGIT_PRECISION[value.type as NumberType] !== undefined) {
-				this.defaultSize += (DIGIT_PRECISION[value.type as NumberType] * 3.32) / 8;
-			} else if (value.type === "string") {
-				this.defaultSize += value.size;
-			} else if (value.type === "bool") {
-				this.defaultSize += 1;
-			}
-		}
 		this.scheme = scheme;
 	}
-
 	/**
 	 * Generates a number for the scheme
 	 * Precision can be lost on very HIGH numbers be aware
@@ -97,6 +84,14 @@ export class Buffering<S extends Scheme> {
 		return {
 			size: size,
 			type: "string",
+			offset: 0,
+		};
+	}
+
+	static specialString() {
+		return {
+			size: 0,
+			type: "specialString",
 			offset: 0,
 		};
 	}
@@ -151,6 +146,9 @@ export class Buffering<S extends Scheme> {
 				case "bool":
 					value = buffer.readu8(buff, offset) === 1;
 					break;
+				case "specialString":
+					value = buffer.readstring(buff, offset + 1, buffer.readu8(buff, offset));
+					break;
 			}
 
 			result[key as keyof S] = value as ElementToType<S, keyof S>;
@@ -162,11 +160,42 @@ export class Buffering<S extends Scheme> {
 	write(info: {
 		[key in keyof S]: ElementToType<S, key>;
 	}): buffer {
+		//* updates the sizing and the offset
+		for (const [key, value] of pairs(this.scheme)) {
+			value.offset = this.size;
+			if (value.type === "specialString" && info[key as keyof S] !== undefined) {
+				value.offset = value.offset + 1;
+				value.size = value.size + 1 + (info[key as keyof S] as string).size();
+			}
+			this.size += value.size;
+
+			if (DIGIT_PRECISION[value.type as NumberType] !== undefined) {
+				this.defaultSize += (DIGIT_PRECISION[value.type as NumberType] * 3.32) / 8;
+			} else if (value.type === "string") {
+				this.defaultSize += value.size;
+			} else if (value.type === "bool") {
+				this.defaultSize += 1;
+			}
+		}
+
+		this.size = 0;
+		for (const [key, value] of pairs(info)) {
+			const field = this.scheme[key as keyof Scheme];
+			if (field.type === "specialString") {
+				const converted = value as string;
+				this.size = this.size + 1 + converted.size();
+			} else {
+				this.size = this.size + field.size;
+			}
+		}
+
 		const buff = buffer.create(this.size);
 
 		for (const [key, field] of pairs(this.scheme)) {
 			const value = info[key];
 			const offset = field.offset;
+			const convertedString = value as string;
+
 			switch (field.type) {
 				case NumberType.u8:
 					buffer.writeu8(buff, offset, value as number);
@@ -197,6 +226,10 @@ export class Buffering<S extends Scheme> {
 					break;
 				case "bool":
 					buffer.writeu8(buff, offset, (value as boolean) ? 1 : 0);
+					break;
+				case "specialString":
+					buffer.writeu8(buff, offset, convertedString.size());
+					buffer.writestring(buff, offset + 1, convertedString, field.size);
 					break;
 			}
 		}
