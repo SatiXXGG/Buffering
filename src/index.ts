@@ -49,7 +49,9 @@ type ElementToType<S extends Scheme, K extends keyof S> = S[K]["type"] extends "
 		? boolean
 		: S[K]["type"] extends NumberType
 			? number
-			: never;
+			: S[K]["type"] extends "specialString"
+				? string
+				: never;
 
 type ReadOutput<S extends Scheme> = {
 	[K in keyof S]: ElementToType<S, K>;
