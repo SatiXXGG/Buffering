@@ -149,7 +149,7 @@ export class Buffering<S extends Scheme> {
 					value = buffer.readu8(buff, offset) === 1;
 					break;
 				case "specialString":
-					value = buffer.readstring(buff, offset + 1, buffer.readu8(buff, offset));
+					value = buffer.readstring(buff, offset, buffer.readu8(buff, offset - 1));
 					break;
 			}
 
@@ -185,6 +185,7 @@ export class Buffering<S extends Scheme> {
 			const field = this.scheme[key as keyof Scheme];
 			if (field.type === "specialString") {
 				const converted = value as string;
+				field.size = 1 + converted.size();
 				this.size = this.size + 1 + converted.size();
 			} else {
 				this.size = this.size + field.size;
@@ -230,8 +231,8 @@ export class Buffering<S extends Scheme> {
 					buffer.writeu8(buff, offset, (value as boolean) ? 1 : 0);
 					break;
 				case "specialString":
-					buffer.writeu8(buff, offset, convertedString.size());
-					buffer.writestring(buff, offset + 1, convertedString, field.size);
+					buffer.writeu8(buff, offset - 1, convertedString.size());
+					buffer.writestring(buff, offset, convertedString, field.size - 1);
 					break;
 			}
 		}
