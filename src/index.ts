@@ -88,7 +88,7 @@ export class Buffering<S extends Scheme> {
 		};
 	}
 
-	static specialString() {
+	static specialString(): element<"specialString"> {
 		return {
 			size: 0,
 			type: "specialString",
