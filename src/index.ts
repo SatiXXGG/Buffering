@@ -63,6 +63,18 @@ export class Buffering<S extends Scheme> {
 	private scheme: Scheme;
 	constructor(scheme: Scheme) {
 		this.scheme = scheme;
+
+		for (const [key, value] of pairs(scheme)) {
+			value.offset = this.size;
+			this.size += value.size;
+			if (DIGIT_PRECISION[value.type as NumberType] !== undefined) {
+				this.defaultSize += (DIGIT_PRECISION[value.type as NumberType] * 3.32) / 8;
+			} else if (value.type === "string") {
+				this.defaultSize += value.size;
+			} else if (value.type === "bool") {
+				this.defaultSize += 1;
+			}
+		}
 	}
 	/**
 	 * Generates a number for the scheme
@@ -159,36 +171,46 @@ export class Buffering<S extends Scheme> {
 		return result;
 	}
 
+	hasSpecial(): boolean {
+		for (const [key, value] of pairs(this.scheme)) {
+			if (value.type === "specialString") {
+				return true;
+			}
+		}
+		return false;
+	}
 	write(info: {
 		[key in keyof S]: ElementToType<S, key>;
 	}): buffer {
 		//* updates the sizing and the offset
-		for (const [key, value] of pairs(this.scheme)) {
-			value.offset = this.size;
-			if (value.type === "specialString" && info[key as keyof S] !== undefined) {
-				value.offset = value.offset + 1;
-				value.size = value.size + 1 + (info[key as keyof S] as string).size();
-			}
-			this.size += value.size;
+		if (this.hasSpecial()) {
+			for (const [key, value] of pairs(this.scheme)) {
+				value.offset = this.size;
+				if (value.type === "specialString" && info[key as keyof S] !== undefined) {
+					value.offset = value.offset + 1;
+					value.size = value.size + 1 + (info[key as keyof S] as string).size();
+				}
+				this.size += value.size;
 
-			if (DIGIT_PRECISION[value.type as NumberType] !== undefined) {
-				this.defaultSize += (DIGIT_PRECISION[value.type as NumberType] * 3.32) / 8;
-			} else if (value.type === "string") {
-				this.defaultSize += value.size;
-			} else if (value.type === "bool") {
-				this.defaultSize += 1;
+				if (DIGIT_PRECISION[value.type as NumberType] !== undefined) {
+					this.defaultSize += (DIGIT_PRECISION[value.type as NumberType] * 3.32) / 8;
+				} else if (value.type === "string") {
+					this.defaultSize += value.size;
+				} else if (value.type === "bool") {
+					this.defaultSize += 1;
+				}
 			}
-		}
 
-		this.size = 0;
-		for (const [key, value] of pairs(info)) {
-			const field = this.scheme[key as keyof Scheme];
-			if (field.type === "specialString") {
-				const converted = value as string;
-				field.size = 1 + converted.size();
-				this.size = this.size + 1 + converted.size();
-			} else {
-				this.size = this.size + field.size;
+			this.size = 0;
+			for (const [key, value] of pairs(info)) {
+				const field = this.scheme[key as keyof Scheme];
+				if (field.type === "specialString") {
+					const converted = value as string;
+					field.size = 1 + converted.size();
+					this.size = this.size + 1 + converted.size();
+				} else {
+					this.size = this.size + field.size;
+				}
 			}
 		}
 
