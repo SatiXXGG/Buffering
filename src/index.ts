@@ -9,7 +9,7 @@ export enum NumberType {
 	f64 = "f64",
 }
 
-type PrimitiveType = NumberType | "string" | "bool" | "specialString";
+type PrimitiveType = NumberType | "string" | "bool" | "specialString" | "nonBufferString";
 
 const BYTE_SIZING = {
 	[NumberType.u8]: 1,
@@ -57,6 +57,8 @@ type ReadOutput<S extends Scheme> = {
 	[K in keyof S]: ElementToType<S, K>;
 };
 
+type optionalInstance<S extends Scheme> = { [key in keyof S]?: ElementToType<S, key> };
+type BufferingInstance<S extends Scheme> = [buffer, optionalInstance<S>];
 export class Buffering<S extends Scheme> {
 	private size = 0;
 	private defaultSize = 0;
@@ -102,6 +104,14 @@ export class Buffering<S extends Scheme> {
 		};
 	}
 
+	static nonBufferString(): element<"nonBufferString"> {
+		return {
+			size: 0,
+			type: "nonBufferString",
+			offset: 0,
+		};
+	}
+
 	static specialString(): element<"specialString"> {
 		return {
 			size: 0,
@@ -122,8 +132,9 @@ export class Buffering<S extends Scheme> {
 		};
 	}
 
-	read(buff: buffer): ReadOutput<S> {
-		const result = {} as ReadOutput<S>;
+	read(instance: BufferingInstance<S>): ReadOutput<S> {
+		const [buff, data] = instance;
+		const result = { ...data } as ReadOutput<S>;
 
 		for (const [key, field] of pairs(this.scheme)) {
 			const offset = field.offset;
@@ -181,7 +192,7 @@ export class Buffering<S extends Scheme> {
 	}
 	write(info: {
 		[key in keyof S]: ElementToType<S, key>;
-	}): buffer {
+	}): BufferingInstance<S> {
 		//* updates the sizing and the offset
 		if (this.hasSpecial()) {
 			for (const [key, value] of pairs(this.scheme)) {
@@ -215,7 +226,7 @@ export class Buffering<S extends Scheme> {
 		}
 
 		const buff = buffer.create(this.size);
-
+		const nonCompression: optionalInstance<S> = {};
 		for (const [key, field] of pairs(this.scheme)) {
 			const value = info[key];
 			const offset = field.offset;
@@ -256,9 +267,11 @@ export class Buffering<S extends Scheme> {
 					buffer.writeu8(buff, offset - 1, convertedString.size());
 					buffer.writestring(buff, offset, convertedString, field.size - 1);
 					break;
+				case "nonBufferString":
+					nonCompression[key as keyof S] = value;
 			}
 		}
 
-		return buff;
+		return [buff, nonCompression];
 	}
 }
