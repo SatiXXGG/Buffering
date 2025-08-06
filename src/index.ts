@@ -179,7 +179,9 @@ export class Buffering<S extends Scheme> {
 					break;
 			}
 
-			result[key as keyof S] = value as ElementToType<S, keyof S>;
+			if (field.type !== "nonBufferString") {
+				result[key as keyof S] = value as ElementToType<S, keyof S>;
+			}
 		}
 
 		return result;
