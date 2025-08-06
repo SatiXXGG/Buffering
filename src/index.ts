@@ -57,8 +57,9 @@ type ReadOutput<S extends Scheme> = {
 	[K in keyof S]: ElementToType<S, K>;
 };
 
-type optionalInstance<S extends Scheme> = { [key in keyof S]?: ElementToType<S, key> };
-type BufferingInstance<S extends Scheme> = [buffer, optionalInstance<S>];
+export type BufferingOptional<S extends Scheme> = { [key in keyof S]?: ElementToType<S, key> };
+export type BufferingInstance<S extends Scheme> = [buffer, BufferingOptional<S>];
+
 export class Buffering<S extends Scheme> {
 	private size = 0;
 	private defaultSize = 0;
@@ -226,7 +227,7 @@ export class Buffering<S extends Scheme> {
 		}
 
 		const buff = buffer.create(this.size);
-		const nonCompression: optionalInstance<S> = {};
+		const nonCompression: BufferingOptional<S> = {};
 		for (const [key, field] of pairs(this.scheme)) {
 			const value = info[key];
 			const offset = field.offset;
