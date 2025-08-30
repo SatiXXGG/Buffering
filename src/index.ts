@@ -122,6 +122,11 @@ export class Buffering<S extends Scheme> {
 			offset: 0,
 		};
 	}
+
+	instance(buff: buffer): BufferingInstance<S> {
+		return [buff, {}];
+	}
+
 	/**
 	 * Generates a bool
 	 * @returns
