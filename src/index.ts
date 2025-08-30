@@ -123,6 +123,11 @@ export class Buffering<S extends Scheme> {
 		};
 	}
 
+	/**
+	 * Creates a buffer instance with no non-compression data
+	 * @param buff
+	 * @returns
+	 */
 	instance(buff: buffer): BufferingInstance<S> {
 		return [buff, {}];
 	}
